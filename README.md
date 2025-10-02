@@ -123,6 +123,81 @@ context.set('custom_key', 'custom_value')
 hash = context.to_h
 ```
 
+## Error Reporting and Auto-Disable
+
+The SDK supports reporting errors for features, which can trigger automatic disabling based on error rates:
+
+```ruby
+# Report an error for a feature
+health, is_pending = client.report_error(
+  'feature_key',
+  'timeout',
+  'Service did not respond in 5s',
+  { service: 'payment-gateway', timeout_ms: 5000 }
+)
+
+puts "Error reported: pending=#{is_pending}"
+puts "Feature health: enabled=#{health.enabled}, auto_disabled=#{health.auto_disabled}"
+```
+
+### Error Types
+
+Supported error types:
+- `timeout` - Service timeout
+- `validation` - Data validation error
+- `service_unavailable` - External service unavailable
+- `rate_limit` - Rate limit exceeded
+- `network` - Network connectivity issue
+- `internal` - Internal application error
+
+### Context Data
+
+You can provide additional context with error reports:
+
+```ruby
+context = {
+  service: 'payment-gateway',
+  timeout_ms: 5000,
+  user_id: 'user123',
+  region: 'us-east-1'
+}
+
+client.report_error('feature_key', 'timeout', 'Service timeout', context)
+```
+
+## Feature Health Monitoring
+
+Monitor the health status of features:
+
+```ruby
+# Get detailed health information
+health = client.get_feature_health('feature_key')
+
+puts "Feature: #{health.feature_key}"
+puts "Enabled: #{health.enabled}"
+puts "Auto Disabled: #{health.auto_disabled}"
+puts "Error Rate: #{health.error_rate}"
+puts "Threshold: #{health.threshold}"
+puts "Last Error At: #{health.last_error_at}"
+
+# Simple health check
+is_healthy = client.is_feature_healthy('feature_key')
+puts "Feature is healthy: #{is_healthy}"
+```
+
+### FeatureHealth Model
+
+The `FeatureHealth` model provides:
+
+- `feature_key` - The feature identifier
+- `environment_key` - The environment identifier
+- `enabled` - Whether the feature is enabled
+- `auto_disabled` - Whether the feature was auto-disabled due to errors
+- `error_rate` - Current error rate (0.0 to 1.0)
+- `threshold` - Error rate threshold for auto-disable
+- `last_error_at` - Timestamp of the last error
+- `healthy?` - Boolean method to check if feature is healthy
+
 ## Caching
 
 The SDK supports optional caching of evaluation results using LRU cache:

@@ -80,6 +80,26 @@ module Togglr
       JSON.parse(response.body)
     end
 
+    # Report an error for a feature
+    def report_error(feature_key, error_type, error_message, context = {})
+      health, is_pending, error = report_error_with_retries(feature_key, error_type, error_message, context)
+      raise error if error
+      [health, is_pending]
+    end
+
+    # Get feature health information
+    def get_feature_health(feature_key)
+      health, error = get_feature_health_with_retries(feature_key)
+      raise error if error
+      health
+    end
+
+    # Check if feature is healthy (simple boolean check)
+    def is_feature_healthy(feature_key)
+      health = get_feature_health(feature_key)
+      health.healthy?
+    end
+
     def close
       @cache&.clear
     end
@@ -157,6 +177,74 @@ module Togglr
         delay = [delay * @config.backoff.factor, @config.backoff.max_delay].min
       end
       delay
+    end
+
+    def report_error_with_retries(feature_key, error_type, error_message, context)
+      with_retries(max_tries: @config.retries + 1) do
+        report_error_single(feature_key, error_type, error_message, context)
+      end
+    end
+
+    def report_error_single(feature_key, error_type, error_message, context)
+      error_report = ErrorReport.new(error_type, error_message, context)
+      
+      response = @connection.post("/sdk/v1/features/#{feature_key}/report-error") do |req|
+        req.headers['Authorization'] = @config.api_key
+        req.body = error_report.to_h
+      end
+
+      case response.status
+      when 200
+        data = response.body
+        [FeatureHealth.new(data), false, nil] # health, is_pending, error
+      when 202
+        data = response.body
+        [FeatureHealth.new(data), true, nil] # health, is_pending, error
+      when 401
+        [nil, nil, UnauthorizedError.new('Authentication required')]
+      when 400
+        [nil, nil, BadRequestError.new('Bad request')]
+      when 404
+        [nil, nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
+      when 500
+        [nil, nil, InternalServerError.new('Internal server error')]
+      else
+        error_data = response.body
+        error_code = error_data.dig('error', 'code') || 'unknown'
+        error_message = error_data.dig('error', 'message') || 'Unknown error'
+        [nil, nil, APIError.new(error_code, error_message, response.status)]
+      end
+    end
+
+    def get_feature_health_with_retries(feature_key)
+      with_retries(max_tries: @config.retries + 1) do
+        get_feature_health_single(feature_key)
+      end
+    end
+
+    def get_feature_health_single(feature_key)
+      response = @connection.get("/sdk/v1/features/#{feature_key}/health") do |req|
+        req.headers['Authorization'] = @config.api_key
+      end
+
+      case response.status
+      when 200
+        data = response.body
+        [FeatureHealth.new(data), nil] # health, error
+      when 401
+        [nil, UnauthorizedError.new('Authentication required')]
+      when 400
+        [nil, BadRequestError.new('Bad request')]
+      when 404
+        [nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
+      when 500
+        [nil, InternalServerError.new('Internal server error')]
+      else
+        error_data = response.body
+        error_code = error_data.dig('error', 'code') || 'unknown'
+        error_message = error_data.dig('error', 'message') || 'Unknown error'
+        [nil, APIError.new(error_code, error_message, response.status)]
+      end
     end
   end
 end

@@ -43,6 +43,37 @@ begin
   # Health check
   health = client.health_check
   puts "Health check passed: #{health}"
+
+  # Report an error for a feature
+  begin
+    health, is_pending = client.report_error(
+      feature_key,
+      'timeout',
+      'Service did not respond in 5s',
+      { service: 'payment-gateway', timeout_ms: 5000 }
+    )
+    puts "Error reported for #{feature_key}: pending=#{is_pending}"
+    puts "Feature health: enabled=#{health.enabled}, auto_disabled=#{health.auto_disabled}"
+  rescue StandardError => e
+    puts "Failed to report error: #{e.message}"
+  end
+
+  # Get feature health
+  begin
+    health = client.get_feature_health(feature_key)
+    puts "Feature health: enabled=#{health.enabled}, auto_disabled=#{health.auto_disabled}"
+    puts "Error rate: #{health.error_rate}, threshold: #{health.threshold}"
+  rescue StandardError => e
+    puts "Failed to get feature health: #{e.message}"
+  end
+
+  # Simple health check
+  begin
+    is_healthy = client.is_feature_healthy(feature_key)
+    puts "Feature #{feature_key} is healthy: #{is_healthy}"
+  rescue StandardError => e
+    puts "Failed to check feature health: #{e.message}"
+  end
 rescue StandardError => e
   puts "Error: #{e.message}"
 ensure
