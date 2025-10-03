@@ -129,15 +129,14 @@ The SDK supports reporting errors for features, which can trigger automatic disa
 
 ```ruby
 # Report an error for a feature
-health, is_pending = client.report_error(
+client.report_error(
   'feature_key',
   'timeout',
   'Service did not respond in 5s',
   { service: 'payment-gateway', timeout_ms: 5000 }
 )
 
-puts "Error reported: pending=#{is_pending}"
-puts "Feature health: enabled=#{health.enabled}, auto_disabled=#{health.auto_disabled}"
+puts "Error reported successfully - queued for processing"
 ```
 
 ### Error Types

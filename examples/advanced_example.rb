@@ -52,10 +52,8 @@ begin
 
   error_types.each do |error_type, message, context_data|
     begin
-      health, is_pending = client.report_error(feature_key, error_type, message, context_data)
-      puts "Reported #{error_type} error: pending=#{is_pending}"
-      puts "  Health: enabled=#{health.enabled}, auto_disabled=#{health.auto_disabled}"
-      puts "  Error rate: #{health.error_rate}, threshold: #{health.threshold}"
+      client.report_error(feature_key, error_type, message, context_data)
+      puts "Reported #{error_type} error successfully - queued for processing"
     rescue StandardError => e
       puts "Failed to report #{error_type} error: #{e.message}"
     end

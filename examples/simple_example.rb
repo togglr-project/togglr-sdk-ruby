@@ -46,14 +46,13 @@ begin
 
   # Report an error for a feature
   begin
-    health, is_pending = client.report_error(
+    client.report_error(
       feature_key,
       'timeout',
       'Service did not respond in 5s',
       { service: 'payment-gateway', timeout_ms: 5000 }
     )
-    puts "Error reported for #{feature_key}: pending=#{is_pending}"
-    puts "Feature health: enabled=#{health.enabled}, auto_disabled=#{health.auto_disabled}"
+    puts "Error reported successfully - queued for processing"
   rescue StandardError => e
     puts "Failed to report error: #{e.message}"
   end

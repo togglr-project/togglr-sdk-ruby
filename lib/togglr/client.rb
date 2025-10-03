@@ -82,9 +82,9 @@ module Togglr
 
     # Report an error for a feature
     def report_error(feature_key, error_type, error_message, context = {})
-      health, is_pending, error = report_error_with_retries(feature_key, error_type, error_message, context)
+      error = report_error_with_retries(feature_key, error_type, error_message, context)
       raise error if error
-      [health, is_pending]
+      nil # Success - error queued for processing
     end
 
     # Get feature health information
@@ -181,7 +181,9 @@ module Togglr
 
     def report_error_with_retries(feature_key, error_type, error_message, context)
       with_retries(max_tries: @config.retries + 1) do
-        report_error_single(feature_key, error_type, error_message, context)
+        error = report_error_single(feature_key, error_type, error_message, context)
+        raise error if error
+        nil # Success
       end
     end
 
@@ -194,25 +196,22 @@ module Togglr
       end
 
       case response.status
-      when 200
-        data = response.body
-        [FeatureHealth.new(data), false, nil] # health, is_pending, error
       when 202
-        data = response.body
-        [FeatureHealth.new(data), true, nil] # health, is_pending, error
+        # 202 response means success - error queued for processing
+        nil # Success, no error
       when 401
-        [nil, nil, UnauthorizedError.new('Authentication required')]
+        UnauthorizedError.new('Authentication required')
       when 400
-        [nil, nil, BadRequestError.new('Bad request')]
+        BadRequestError.new('Bad request')
       when 404
-        [nil, nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
+        FeatureNotFoundError.new("Feature #{feature_key} not found")
       when 500
-        [nil, nil, InternalServerError.new('Internal server error')]
+        InternalServerError.new('Internal server error')
       else
         error_data = response.body
         error_code = error_data.dig('error', 'code') || 'unknown'
         error_message = error_data.dig('error', 'message') || 'Unknown error'
-        [nil, nil, APIError.new(error_code, error_message, response.status)]
+        APIError.new(error_code, error_message, response.status)
       end
     end
 
