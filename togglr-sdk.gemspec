@@ -13,10 +13,12 @@ Gem::Specification.new do |spec|
 
   spec.required_ruby_version = '>= 3.0.0'
 
-  spec.files = Dir.glob('{lib,spec}/**/*') + %w[README.md LICENSE Gemfile]
+  spec.files = Dir.glob('{lib,spec,generated}/**/*') + %w[README.md LICENSE Gemfile]
   spec.require_paths = ['lib']
 
   spec.add_dependency 'faraday', '~> 2.7'
+  spec.add_dependency 'faraday-multipart'
+  spec.add_dependency 'marcel'
   spec.add_dependency 'lru_redux', '~> 1.1'
   spec.add_dependency 'retries', '~> 0.0.5'
   spec.metadata['rubygems_mfa_required'] = 'true'

@@ -1,14 +1,28 @@
-require 'faraday'
 require 'json'
 require 'retries'
 require 'digest'
+
+# Load generated client files directly
+require_relative '../togglr-client/api_client'
+require_relative '../togglr-client/api_error'
+require_relative '../togglr-client/version'
+require_relative '../togglr-client/configuration'
+require_relative '../togglr-client/models/feature_error_report'
+require_relative '../togglr-client/models/feature_health'
+require_relative '../togglr-client/models/evaluate_request'
+require_relative '../togglr-client/api/default_api'
 
 module Togglr
   class Client
     def initialize(config)
       @config = config
-      @connection = build_connection
       @cache = config.cache_enabled ? Cache.new(config.cache_size, config.cache_ttl) : nil
+      
+      # Initialize generated API client
+      api_config = TogglrClient::Configuration.new
+      api_config.base_path = config.base_url
+      api_config.api_key['Authorization'] = config.api_key
+      @api_client = TogglrClient::DefaultApi.new(TogglrClient::ApiClient.new(api_config))
     end
 
     def self.new_with_defaults(api_key)
@@ -39,7 +53,7 @@ module Togglr
 
       # Make API call with retries
       result = with_retries(max_tries: @config.retries + 1) do
-        make_api_call(feature_key, context, project_api_key)
+        evaluate_single(feature_key, context, project_api_key)
       end
 
       # Record metrics
@@ -74,10 +88,11 @@ module Togglr
     end
 
     def health_check
-      response = @connection.get('/sdk/v1/health')
-      raise "Health check failed with status #{response.status}" unless response.success?
-
-      JSON.parse(response.body)
+      begin
+        @api_client.health_check
+      rescue TogglrClient::ApiError => e
+        raise "Health check failed with status #{e.code}: #{e.message}"
+      end
     end
 
     # Report an error for a feature
@@ -106,44 +121,31 @@ module Togglr
 
     private
 
-    def build_connection
-      Faraday.new(url: @config.base_url) do |conn|
-        conn.request :json
-        conn.response :json
-        conn.adapter Faraday.default_adapter
-        conn.options.timeout = @config.timeout
-        conn.options.open_timeout = @config.timeout
-      end
-    end
-
     def build_cache_key(feature_key, context)
       context_hash = Digest::SHA256.hexdigest(context.to_h.to_json)[0, 16]
       "#{feature_key}:#{context_hash}"
     end
 
-    def make_api_call(feature_key, context, project_api_key)
-      response = @connection.post("/sdk/v1/features/#{feature_key}/evaluate") do |req|
-        req.headers['Authorization'] = project_api_key
-        req.body = context.to_h
-      end
-
-      case response.status
-      when 200
-        data = response.body
-        [data['value'], data['enabled'], true, nil]
-      when 404
-        ['', false, false, nil] # Feature not found, not an error
-      when 401
-        [nil, nil, nil, UnauthorizedError.new('Authentication required')]
-      when 400
-        [nil, nil, nil, BadRequestError.new('Bad request')]
-      when 500
-        [nil, nil, nil, InternalServerError.new('Internal server error')]
-      else
-        error_data = response.body
-        error_code = error_data.dig('error', 'code') || 'unknown'
-        error_message = error_data.dig('error', 'message') || 'Unknown error'
-        [nil, nil, nil, APIError.new(error_code, error_message, response.status)]
+    def evaluate_single(feature_key, context, project_api_key)
+      begin
+        # Create evaluate request using generated client
+        evaluate_request = TogglrClient::EvaluateRequest.new(context.to_h)
+        response = @api_client.evaluate_feature(feature_key, evaluate_request)
+        
+        [response.value, response.enabled, true, nil]
+      rescue TogglrClient::ApiError => e
+        case e.code
+        when 404
+          ['', false, false, nil] # Feature not found, not an error
+        when 401
+          [nil, nil, nil, UnauthorizedError.new('Authentication required')]
+        when 400
+          [nil, nil, nil, BadRequestError.new('Bad request')]
+        when 500
+          [nil, nil, nil, InternalServerError.new('Internal server error')]
+        else
+          [nil, nil, nil, APIError.new(e.code.to_s, e.message, e.code)]
+        end
       end
     end
 
@@ -188,30 +190,29 @@ module Togglr
     end
 
     def report_error_single(feature_key, error_type, error_message, context)
-      error_report = ErrorReport.new(error_type, error_message, context)
-      
-      response = @connection.post("/sdk/v1/features/#{feature_key}/report-error") do |req|
-        req.headers['Authorization'] = @config.api_key
-        req.body = error_report.to_h
-      end
-
-      case response.status
-      when 202
-        # 202 response means success - error queued for processing
-        nil # Success, no error
-      when 401
-        UnauthorizedError.new('Authentication required')
-      when 400
-        BadRequestError.new('Bad request')
-      when 404
-        FeatureNotFoundError.new("Feature #{feature_key} not found")
-      when 500
-        InternalServerError.new('Internal server error')
-      else
-        error_data = response.body
-        error_code = error_data.dig('error', 'code') || 'unknown'
-        error_message = error_data.dig('error', 'message') || 'Unknown error'
-        APIError.new(error_code, error_message, response.status)
+      begin
+        error_report = TogglrClient::FeatureErrorReport.new(
+          error_type: error_type,
+          error_message: error_message,
+          context: context
+        )
+        
+        @api_client.report_feature_error(feature_key, error_report)
+        # Success - error queued for processing
+        nil
+      rescue TogglrClient::ApiError => e
+        case e.code
+        when 401
+          UnauthorizedError.new('Authentication required')
+        when 400
+          BadRequestError.new('Bad request')
+        when 404
+          FeatureNotFoundError.new("Feature #{feature_key} not found")
+        when 500
+          InternalServerError.new('Internal server error')
+        else
+          APIError.new(e.code.to_s, e.message, e.code)
+        end
       end
     end
 
@@ -222,28 +223,38 @@ module Togglr
     end
 
     def get_feature_health_single(feature_key)
-      response = @connection.get("/sdk/v1/features/#{feature_key}/health") do |req|
-        req.headers['Authorization'] = @config.api_key
+      begin
+        api_health = @api_client.get_feature_health(feature_key)
+        health = convert_feature_health(api_health)
+        [health, nil] # health, error
+      rescue TogglrClient::ApiError => e
+        case e.code
+        when 401
+          [nil, UnauthorizedError.new('Authentication required')]
+        when 400
+          [nil, BadRequestError.new('Bad request')]
+        when 404
+          [nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
+        when 500
+          [nil, InternalServerError.new('Internal server error')]
+        else
+          [nil, APIError.new(e.code.to_s, e.message, e.code)]
+        end
       end
+    end
 
-      case response.status
-      when 200
-        data = response.body
-        [FeatureHealth.new(data), nil] # health, error
-      when 401
-        [nil, UnauthorizedError.new('Authentication required')]
-      when 400
-        [nil, BadRequestError.new('Bad request')]
-      when 404
-        [nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
-      when 500
-        [nil, InternalServerError.new('Internal server error')]
-      else
-        error_data = response.body
-        error_code = error_data.dig('error', 'code') || 'unknown'
-        error_message = error_data.dig('error', 'message') || 'Unknown error'
-        [nil, APIError.new(error_code, error_message, response.status)]
-      end
+    private
+
+    def convert_feature_health(api_health)
+      FeatureHealth.new(
+        feature_key: api_health.feature_key,
+        environment_key: api_health.environment_key,
+        enabled: api_health.enabled || false,
+        auto_disabled: api_health.auto_disabled || false,
+        error_rate: api_health.error_rate || 0,
+        threshold: api_health.threshold || 0,
+        last_error_at: api_health.last_error_at
+      )
     end
   end
 end
