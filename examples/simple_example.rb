@@ -3,13 +3,15 @@
 require_relative '../lib/togglr'
 
 # Create client with default configuration
-client = Togglr::Client.new_with_defaults('your-api-key-here') do |config|
-  config.base_url = 'http://localhost:8090'
-  config.timeout = 1.0
-  config.cache_enabled = true
-  config.cache_size = 1000
-  config.cache_ttl = 10
-  config.retries = 3
+client = Togglr::Client.new_with_defaults('your-api-key-here',
+  Togglr::Options.with_base_url('https://localhost:8090'),
+  Togglr::Options.with_insecure,
+  Togglr::Options.with_timeout(1.0),
+  Togglr::Options.with_cache(1000, 10),
+  Togglr::Options.with_retries(3)
+) do |config|
+  # Additional configuration can be set in the block
+  config.logger = Togglr::NoOpLogger.new
 end
 
 begin

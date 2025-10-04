@@ -2,19 +2,17 @@
 
 require_relative '../lib/togglr'
 
-# Create client with advanced configuration
-client = Togglr::Client.new_with_defaults('your-api-key-here') do |config|
-  config.base_url = 'http://localhost:8090'
-  config.timeout = 2.0
-  config.cache_enabled = true
-  config.cache_size = 2000
-  config.cache_ttl = 30
-  config.retries = 5
-  
-  # Configure backoff
-  config.backoff.base_delay = 0.2
-  config.backoff.max_delay = 5.0
-  config.backoff.factor = 1.5
+# Create client with advanced configuration using functional options
+client = Togglr::Client.new_with_defaults('your-api-key-here',
+  Togglr::Options.with_base_url('https://localhost:8090'),
+  Togglr::Options.with_insecure,  # Skip SSL verification for development
+  Togglr::Options.with_timeout(2.0),
+  Togglr::Options.with_cache(2000, 30),
+  Togglr::Options.with_retries(5),
+  Togglr::Options.with_backoff(base_delay: 0.2, max_delay: 5.0, factor: 1.5)
+) do |config|
+  # Additional configuration can be set in the block
+  config.logger = Togglr::NoOpLogger.new
 end
 
 begin

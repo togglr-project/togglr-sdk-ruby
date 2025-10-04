@@ -7,6 +7,7 @@ require_relative 'togglr/cache'
 require_relative 'togglr/logger'
 require_relative 'togglr/metrics'
 require_relative 'togglr/models'
+require_relative 'togglr/options'
 
 module Togglr
   class Error < StandardError; end

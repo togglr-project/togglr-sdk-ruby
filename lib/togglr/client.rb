@@ -22,11 +22,18 @@ module Togglr
       api_config = TogglrClient::Configuration.new
       api_config.base_path = config.base_url
       api_config.api_key['Authorization'] = config.api_key
+      api_config.ssl_verify = !config.insecure
       @api_client = TogglrClient::DefaultApi.new(TogglrClient::ApiClient.new(api_config))
     end
 
-    def self.new_with_defaults(api_key)
+    def self.new_with_defaults(api_key, *options)
       config = Config.default(api_key)
+      
+      # Apply options
+      options.each do |option|
+        option.call(config) if option.respond_to?(:call)
+      end
+      
       yield(config) if block_given?
       new(config)
     end

@@ -71,6 +71,20 @@ client = Togglr::Client.new(config)
 
 ### Configuration options
 
+#### Using functional options (recommended)
+
+```ruby
+client = Togglr::Client.new_with_defaults('api-key',
+  Togglr::Options.with_base_url('https://api.togglr.com'),
+  Togglr::Options.with_timeout(2.0),
+  Togglr::Options.with_retries(3),
+  Togglr::Options.with_cache(1000, 10),
+  Togglr::Options.with_insecure  # Skip SSL verification for self-signed certificates
+)
+```
+
+#### Using configuration block
+
 ```ruby
 client = Togglr::Client.new_with_defaults('api-key') do |config|
   config.base_url = 'https://api.togglr.com'
@@ -81,6 +95,7 @@ client = Togglr::Client.new_with_defaults('api-key') do |config|
   config.cache_ttl = 10
   config.use_circuit_breaker = true
   config.max_connections = 100
+  config.insecure = true  # Skip SSL verification for self-signed certificates
 end
 ```
 
