@@ -4,13 +4,13 @@ require_relative '../lib/togglr'
 
 # Create client with advanced configuration using functional options
 client = Togglr::Client.new_with_defaults('your-api-key-here',
-  Togglr::Options.with_base_url('https://localhost:8090'),
-  Togglr::Options.with_insecure,  # Skip SSL verification for development
-  Togglr::Options.with_timeout(2.0),
-  Togglr::Options.with_cache(2000, 30),
-  Togglr::Options.with_retries(5),
-  Togglr::Options.with_backoff(base_delay: 0.2, max_delay: 5.0, factor: 1.5)
-) do |config|
+                                          Togglr::Options.with_base_url('https://localhost:8090'),
+                                          Togglr::Options.with_insecure, # Skip SSL verification for development
+                                          Togglr::Options.with_timeout(2.0),
+                                          Togglr::Options.with_cache(2000, 30),
+                                          Togglr::Options.with_retries(5),
+                                          Togglr::Options.with_backoff(base_delay: 0.2, max_delay: 5.0,
+                                                                       factor: 1.5)) do |config|
   # Additional configuration can be set in the block
   config.logger = Togglr::NoOpLogger.new
 end
@@ -30,7 +30,7 @@ begin
   feature_key = 'advanced_analytics'
 
   # Evaluate feature
-  puts "=== Feature Evaluation ==="
+  puts '=== Feature Evaluation ==='
   value, enabled, found = client.evaluate(feature_key, context)
   if found
     puts "Feature #{feature_key}: enabled=#{enabled}, value=#{value}"
@@ -40,9 +40,9 @@ begin
 
   # Test different error types
   puts "\n=== Error Reporting Examples ==="
-  
+
   error_types = [
-    ['timeout', 'Service timeout after 10s', { timeout_ms: 10000, service: 'analytics' }],
+    ['timeout', 'Service timeout after 10s', { timeout_ms: 10_000, service: 'analytics' }],
     ['validation', 'Invalid user data provided', { field: 'email', value: 'invalid-email' }],
     ['service_unavailable', 'External service is down', { service: 'database', region: 'us-east-1' }],
     ['rate_limit', 'Too many requests', { limit: 100, current: 150, window: '1m' }]
@@ -59,8 +59,8 @@ begin
   end
 
   # Feature health monitoring
-  puts "=== Feature Health Monitoring ==="
-  
+  puts '=== Feature Health Monitoring ==='
+
   begin
     health = client.get_feature_health(feature_key)
     puts "Feature: #{health.feature_key}"
@@ -86,22 +86,19 @@ begin
 
   # Multiple features health check
   puts "\n=== Multiple Features Health Check ==="
-  features = ['advanced_analytics', 'new_ui', 'beta_features', 'experimental_api']
-  
+  features = %w[advanced_analytics new_ui beta_features experimental_api]
+
   features.each do |feature|
-    begin
-      is_healthy = client.is_feature_healthy(feature)
-      puts "Feature #{feature}: #{is_healthy ? 'healthy' : 'unhealthy'}"
-    rescue StandardError => e
-      puts "Feature #{feature}: error - #{e.message}"
-    end
+    is_healthy = client.is_feature_healthy(feature)
+    puts "Feature #{feature}: #{is_healthy ? 'healthy' : 'unhealthy'}"
+  rescue StandardError => e
+    puts "Feature #{feature}: error - #{e.message}"
   end
 
   # Health check
   puts "\n=== System Health Check ==="
   health = client.health_check
   puts "System health: #{health}"
-
 rescue StandardError => e
   puts "Error: #{e.message}"
   puts "Backtrace: #{e.backtrace.first(5).join("\n")}"

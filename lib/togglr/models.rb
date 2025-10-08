@@ -24,7 +24,7 @@ module Togglr
 
   # Model for feature health information
   class FeatureHealth
-    attr_accessor :feature_key, :environment_key, :enabled, :auto_disabled, 
+    attr_accessor :feature_key, :environment_key, :enabled, :auto_disabled,
                   :error_rate, :threshold, :last_error_at
 
     def initialize(data = {})

@@ -23,7 +23,7 @@ module Togglr
 
     # Set backoff configuration
     def self.with_backoff(base_delay: nil, max_delay: nil, factor: nil)
-      ->(config) do
+      lambda do |config|
         config.backoff.base_delay = base_delay if base_delay
         config.backoff.max_delay = max_delay if max_delay
         config.backoff.factor = factor if factor
@@ -32,7 +32,7 @@ module Togglr
 
     # Enable caching
     def self.with_cache(size, ttl)
-      ->(config) do
+      lambda do |config|
         config.cache_enabled = true
         config.cache_size = size
         config.cache_ttl = ttl

@@ -42,4 +42,3 @@ module Togglr
     end
   end
 end
-

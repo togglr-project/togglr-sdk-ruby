@@ -9,7 +9,6 @@ require_relative '../togglr-client/version'
 require_relative '../togglr-client/configuration'
 require_relative '../togglr-client/models/feature_error_report'
 require_relative '../togglr-client/models/feature_health'
-require_relative '../togglr-client/models/evaluate_request'
 require_relative '../togglr-client/api/default_api'
 
 module Togglr
@@ -17,7 +16,7 @@ module Togglr
     def initialize(config)
       @config = config
       @cache = config.cache_enabled ? Cache.new(config.cache_size, config.cache_ttl) : nil
-      
+
       # Initialize generated API client
       api_config = TogglrClient::Configuration.new
       api_config.base_path = config.base_url
@@ -28,12 +27,12 @@ module Togglr
 
     def self.new_with_defaults(api_key, *options)
       config = Config.default(api_key)
-      
+
       # Apply options
       options.each do |option|
         option.call(config) if option.respond_to?(:call)
       end
-      
+
       yield(config) if block_given?
       new(config)
     end
@@ -95,17 +94,16 @@ module Togglr
     end
 
     def health_check
-      begin
-        @api_client.health_check
-      rescue TogglrClient::ApiError => e
-        raise "Health check failed with status #{e.code}: #{e.message}"
-      end
+      @api_client.sdk_v1_health_get
+    rescue TogglrClient::ApiError => e
+      raise "Health check failed with status #{e.code}: #{e.message}"
     end
 
     # Report an error for a feature
     def report_error(feature_key, error_type, error_message, context = {})
       error = report_error_with_retries(feature_key, error_type, error_message, context)
       raise error if error
+
       nil # Success - error queued for processing
     end
 
@@ -113,6 +111,7 @@ module Togglr
     def get_feature_health(feature_key)
       health, error = get_feature_health_with_retries(feature_key)
       raise error if error
+
       health
     end
 
@@ -134,25 +133,22 @@ module Togglr
     end
 
     def evaluate_single(feature_key, context, project_api_key)
-      begin
-        # Create evaluate request using generated client
-        evaluate_request = TogglrClient::EvaluateRequest.new(context.to_h)
-        response = @api_client.evaluate_feature(feature_key, evaluate_request)
-        
-        [response.value, response.enabled, true, nil]
-      rescue TogglrClient::ApiError => e
-        case e.code
-        when 404
-          ['', false, false, nil] # Feature not found, not an error
-        when 401
-          [nil, nil, nil, UnauthorizedError.new('Authentication required')]
-        when 400
-          [nil, nil, nil, BadRequestError.new('Bad request')]
-        when 500
-          [nil, nil, nil, InternalServerError.new('Internal server error')]
-        else
-          [nil, nil, nil, APIError.new(e.code.to_s, e.message, e.code)]
-        end
+      # Use the correct API method with request body as hash
+      response = @api_client.sdk_v1_features_feature_key_evaluate_post(feature_key, context.to_h)
+
+      [response.value, response.enabled, true, nil]
+    rescue TogglrClient::ApiError => e
+      case e.code
+      when 404
+        ['', false, false, nil] # Feature not found, not an error
+      when 401
+        [nil, nil, nil, UnauthorizedError.new('Authentication required')]
+      when 400
+        [nil, nil, nil, BadRequestError.new('Bad request')]
+      when 500
+        [nil, nil, nil, InternalServerError.new('Internal server error')]
+      else
+        [nil, nil, nil, APIError.new(e.code.to_s, e.message, e.code)]
       end
     end
 
@@ -192,34 +188,33 @@ module Togglr
       with_retries(max_tries: @config.retries + 1) do
         error = report_error_single(feature_key, error_type, error_message, context)
         raise error if error
+
         nil # Success
       end
     end
 
     def report_error_single(feature_key, error_type, error_message, context)
-      begin
-        error_report = TogglrClient::FeatureErrorReport.new(
-          error_type: error_type,
-          error_message: error_message,
-          context: context
-        )
-        
-        @api_client.report_feature_error(feature_key, error_report)
-        # Success - error queued for processing
-        nil
-      rescue TogglrClient::ApiError => e
-        case e.code
-        when 401
-          UnauthorizedError.new('Authentication required')
-        when 400
-          BadRequestError.new('Bad request')
-        when 404
-          FeatureNotFoundError.new("Feature #{feature_key} not found")
-        when 500
-          InternalServerError.new('Internal server error')
-        else
-          APIError.new(e.code.to_s, e.message, e.code)
-        end
+      error_report = TogglrClient::FeatureErrorReport.new(
+        error_type: error_type,
+        error_message: error_message,
+        context: context
+      )
+
+      @api_client.report_feature_error(feature_key, error_report)
+      # Success - error queued for processing
+      nil
+    rescue TogglrClient::ApiError => e
+      case e.code
+      when 401
+        UnauthorizedError.new('Authentication required')
+      when 400
+        BadRequestError.new('Bad request')
+      when 404
+        FeatureNotFoundError.new("Feature #{feature_key} not found")
+      when 500
+        InternalServerError.new('Internal server error')
+      else
+        APIError.new(e.code.to_s, e.message, e.code)
       end
     end
 
@@ -230,23 +225,21 @@ module Togglr
     end
 
     def get_feature_health_single(feature_key)
-      begin
-        api_health = @api_client.get_feature_health(feature_key)
-        health = convert_feature_health(api_health)
-        [health, nil] # health, error
-      rescue TogglrClient::ApiError => e
-        case e.code
-        when 401
-          [nil, UnauthorizedError.new('Authentication required')]
-        when 400
-          [nil, BadRequestError.new('Bad request')]
-        when 404
-          [nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
-        when 500
-          [nil, InternalServerError.new('Internal server error')]
-        else
-          [nil, APIError.new(e.code.to_s, e.message, e.code)]
-        end
+      api_health = @api_client.get_feature_health(feature_key)
+      health = convert_feature_health(api_health)
+      [health, nil] # health, error
+    rescue TogglrClient::ApiError => e
+      case e.code
+      when 401
+        [nil, UnauthorizedError.new('Authentication required')]
+      when 400
+        [nil, BadRequestError.new('Bad request')]
+      when 404
+        [nil, FeatureNotFoundError.new("Feature #{feature_key} not found")]
+      when 500
+        [nil, InternalServerError.new('Internal server error')]
+      else
+        [nil, APIError.new(e.code.to_s, e.message, e.code)]
       end
     end
 
