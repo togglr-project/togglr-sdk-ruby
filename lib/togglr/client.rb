@@ -2,14 +2,8 @@ require 'json'
 require 'retries'
 require 'digest'
 
-# Load generated client files directly
-require_relative '../togglr-client/api_client'
-require_relative '../togglr-client/api_error'
-require_relative '../togglr-client/version'
-require_relative '../togglr-client/configuration'
-require_relative '../togglr-client/models/feature_error_report'
-require_relative '../togglr-client/models/feature_health'
-require_relative '../togglr-client/api/default_api'
+# Load generated client files through main entry point
+require_relative '../togglr-client'
 
 module Togglr
   class Client
