@@ -239,15 +239,15 @@ module Togglr
     private
 
     def convert_feature_health(api_health)
-      FeatureHealth.new(
-        feature_key: api_health.feature_key,
-        environment_key: api_health.environment_key,
-        enabled: api_health.enabled || false,
-        auto_disabled: api_health.auto_disabled || false,
-        error_rate: api_health.error_rate || 0,
-        threshold: api_health.threshold || 0,
-        last_error_at: api_health.last_error_at
-      )
+      FeatureHealth.new({
+        'feature_key' => api_health.feature_key,
+        'environment_key' => api_health.environment_key,
+        'enabled' => api_health.enabled,
+        'auto_disabled' => api_health.auto_disabled,
+        'error_rate' => api_health.error_rate,
+        'threshold' => api_health.threshold,
+        'last_error_at' => api_health.last_error_at
+      })
     end
   end
 end
