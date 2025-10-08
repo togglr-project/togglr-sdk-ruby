@@ -4,7 +4,7 @@ require_relative '../lib/togglr'
 
 # Create client with advanced configuration using functional options
 client = Togglr::Client.new_with_defaults('your-api-key-here',
-                                          Togglr::Options.with_base_url('https://localhost:8090'),
+                                          Togglr::Options.with_base_url('https://localhost'),
                                           Togglr::Options.with_insecure, # Skip SSL verification for development
                                           Togglr::Options.with_timeout(2.0),
                                           Togglr::Options.with_cache(2000, 30),
@@ -24,8 +24,8 @@ begin
                                   .with_device_type('desktop')
                                   .with_os('macOS')
                                   .with_os_version('12.0')
-                                  .with_custom_attribute('subscription', 'premium')
-                                  .with_custom_attribute('region', 'north')
+                                  .set('subscription', 'premium')
+                                  .set('region', 'north')
 
   feature_key = 'advanced_analytics'
 
