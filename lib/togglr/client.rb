@@ -19,7 +19,6 @@ module Togglr
 
       # Initialize generated API client
       api_config = TogglrClient::Configuration.new
-      api_config.base_path = config.base_url
       api_config.api_key['Authorization'] = config.api_key
       api_config.ssl_verify = !config.insecure
       @api_client = TogglrClient::DefaultApi.new(TogglrClient::ApiClient.new(api_config))

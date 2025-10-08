@@ -59,3 +59,4 @@
 # Ignore simplecov
 /simplecov/
 
+.idea/
