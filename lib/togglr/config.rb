@@ -1,7 +1,7 @@
 module Togglr
   class Config
     attr_accessor :base_url, :api_key, :timeout, :retries, :backoff,
-                  :cache_enabled, :cache_size, :cache_ttl, :use_circuit_breaker,
+                  :cache_enabled, :cache_size, :cache_ttl,
                   :logger, :metrics, :max_connections, :insecure,
                   :client_cert, :client_key, :ca_cert
 
@@ -14,7 +14,6 @@ module Togglr
       @cache_enabled = false
       @cache_size = 100
       @cache_ttl = 5 # seconds
-      @use_circuit_breaker = false
       @logger = NoOpLogger.new
       @metrics = NoOpMetrics.new
       @max_connections = 100

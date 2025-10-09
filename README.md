@@ -93,7 +93,6 @@ client = Togglr::Client.new_with_defaults('api-key') do |config|
   config.cache_enabled = true
   config.cache_size = 1000
   config.cache_ttl = 10
-  config.use_circuit_breaker = true
   config.max_connections = 100
   config.insecure = true  # Skip SSL verification for self-signed certificates
 end
