@@ -23,7 +23,7 @@ begin
                                   .with_device_type('desktop')
                                   .set('department', 'engineering')
 
-  feature_key = 'secure_feature'
+  feature_key = 'new_ui'
 
   # Evaluate feature with TLS authentication
   puts '=== TLS Secured Feature Evaluation ==='
