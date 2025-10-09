@@ -53,5 +53,28 @@ module Togglr
     def self.with_max_connections(max_connections)
       ->(config) { config.max_connections = max_connections }
     end
+
+    # Set client certificate for TLS authentication
+    def self.with_client_cert(cert_path)
+      ->(config) { config.client_cert = cert_path }
+    end
+
+    # Set client private key for TLS authentication
+    def self.with_client_key(key_path)
+      ->(config) { config.client_key = key_path }
+    end
+
+    # Set CA certificate for TLS verification
+    def self.with_ca_cert(ca_path)
+      ->(config) { config.ca_cert = ca_path }
+    end
+
+    # Set both client certificate and key at once
+    def self.with_client_cert_and_key(cert_path, key_path)
+      lambda do |config|
+        config.client_cert = cert_path
+        config.client_key = key_path
+      end
+    end
   end
 end

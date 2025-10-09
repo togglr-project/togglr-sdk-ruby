@@ -15,6 +15,17 @@ module Togglr
       api_config = TogglrClient::Configuration.new
       api_config.api_key['Authorization'] = config.api_key
       api_config.ssl_verify = !config.insecure
+
+      # Configure TLS certificates if provided
+      if config.client_cert && config.client_key
+        api_config.ssl_client_cert = config.client_cert
+        api_config.ssl_client_key = config.client_key
+      end
+
+      if config.ca_cert
+        api_config.ssl_ca_file = config.ca_cert
+      end
+
       @api_client = TogglrClient::DefaultApi.new(TogglrClient::ApiClient.new(api_config))
     end
 

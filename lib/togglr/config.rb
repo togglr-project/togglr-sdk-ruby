@@ -2,7 +2,8 @@ module Togglr
   class Config
     attr_accessor :base_url, :api_key, :timeout, :retries, :backoff,
                   :cache_enabled, :cache_size, :cache_ttl, :use_circuit_breaker,
-                  :logger, :metrics, :max_connections, :insecure
+                  :logger, :metrics, :max_connections, :insecure,
+                  :client_cert, :client_key, :ca_cert
 
     def initialize(api_key)
       @base_url = 'http://localhost:8090'
@@ -18,6 +19,9 @@ module Togglr
       @metrics = NoOpMetrics.new
       @max_connections = 100
       @insecure = false
+      @client_cert = nil
+      @client_key = nil
+      @ca_cert = nil
     end
 
     def self.default(api_key)
