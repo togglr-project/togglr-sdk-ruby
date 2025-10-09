@@ -60,3 +60,5 @@
 /simplecov/
 
 .idea/
+
+temp_generation/

@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    togglr-sdk (1.0.4)
+    togglr-sdk (1.0.5)
       faraday (~> 2.7)
       faraday-multipart
       lru_redux (~> 1.1)
