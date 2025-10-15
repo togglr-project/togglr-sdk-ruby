@@ -3,8 +3,8 @@
 require_relative '../lib/togglr'
 
 # Create client with default configuration
-client = Togglr::Client.new_with_defaults('your-api-key-here',
-                                          Togglr::Options.with_base_url('https://localhost:8090'),
+client = Togglr::Client.new_with_defaults('42b6f8f1-630c-400c-97bd-a3454a07f700',
+                                          Togglr::Options.with_base_url('http://localhost:8090'),
                                           Togglr::Options.with_insecure,
                                           Togglr::Options.with_timeout(1.0),
                                           Togglr::Options.with_cache(1000, 10),
@@ -73,6 +73,59 @@ begin
     puts "Feature #{feature_key} is healthy: #{is_healthy}"
   rescue StandardError => e
     puts "Failed to check feature health: #{e.message}"
+  end
+
+  # Track events for analytics
+  # Track impression event (recommended for each evaluation)
+  impression_context = Togglr::RequestContext.new
+                                      .with_user_id('user123')
+                                      .with_country('US')
+                                      .with_device_type('mobile')
+
+  impression_event = Togglr::TrackEvent.new('A', Togglr::TrackEvent::SUCCESS)
+                                      .with_request_context(impression_context)
+                                      .with_dedup_key('impression-user123-new_ui')
+
+  begin
+    client.track_event(feature_key, impression_event)
+    puts 'Impression event tracked successfully'
+  rescue StandardError => e
+    puts "Error tracking impression event: #{e.message}"
+  end
+
+  # Track conversion event with reward
+  conversion_context = Togglr::RequestContext.new
+                                           .with_user_id('user123')
+                                           .set('conversion_type', 'purchase')
+                                           .set('order_value', 99.99)
+
+  conversion_event = Togglr::TrackEvent.new('A', Togglr::TrackEvent::SUCCESS)
+                                      .with_reward(1.0)
+                                      .with_request_context(conversion_context)
+                                      .with_dedup_key('conversion-user123-new_ui')
+
+  begin
+    client.track_event(feature_key, conversion_event)
+    puts 'Conversion event tracked successfully'
+  rescue StandardError => e
+    puts "Error tracking conversion event: #{e.message}"
+  end
+
+  # Track error event
+  error_context = Togglr::RequestContext.new
+                                      .with_user_id('user123')
+                                      .set('error_type', 'timeout')
+                                      .set('error_message', 'Service did not respond in 5s')
+
+  error_event = Togglr::TrackEvent.new('B', Togglr::TrackEvent::ERROR)
+                                 .with_request_context(error_context)
+                                 .with_dedup_key('error-user123-new_ui')
+
+  begin
+    client.track_event(feature_key, error_event)
+    puts 'Error event tracked successfully'
+  rescue StandardError => e
+    puts "Error tracking error event: #{e.message}"
   end
 rescue StandardError => e
   puts "Error: #{e.message}"
