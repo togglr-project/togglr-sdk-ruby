@@ -125,6 +125,14 @@ module Togglr
       health.healthy?
     end
 
+    # Track an event for analytics
+    def track_event(feature_key, event)
+      error = track_event_with_retries(feature_key, event)
+      raise error if error
+
+      nil # Success - event queued for processing
+    end
+
     def close
       @cache&.clear
     end
@@ -259,6 +267,36 @@ module Togglr
         'threshold' => api_health.threshold,
         'last_error_at' => api_health.last_error_at
       })
+    end
+
+    def track_event_with_retries(feature_key, event)
+      with_retries(max_tries: @config.retries + 1) do
+        error = track_event_single(feature_key, event)
+        raise error if error
+
+        nil # Success
+      end
+    end
+
+    def track_event_single(feature_key, event)
+      track_request = TogglrClient::TrackRequest.new(event.to_h)
+
+      @api_client.track_feature_event(feature_key, track_request)
+      # Success - event queued for processing
+      nil
+    rescue TogglrClient::ApiError => e
+      case e.code
+      when 401
+        UnauthorizedError.new('Authentication required')
+      when 400
+        BadRequestError.new('Bad request')
+      when 404
+        FeatureNotFoundError.new("Feature #{feature_key} not found")
+      when 500
+        InternalServerError.new('Internal server error')
+      else
+        APIError.new(e.code.to_s, e.message, e.code)
+      end
     end
   end
 end

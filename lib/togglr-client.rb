@@ -29,6 +29,7 @@ require 'togglr-client/models/evaluate_response'
 require 'togglr-client/models/feature_error_report'
 require 'togglr-client/models/feature_health'
 require 'togglr-client/models/health_response'
+require 'togglr-client/models/track_request'
 
 # APIs
 require 'togglr-client/api/default_api'
